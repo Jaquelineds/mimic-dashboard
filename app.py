@@ -36,9 +36,18 @@ st.caption(
     "Integrantes: Francisco João Lucca Neto · Jaqueline Dahmer Steffenon · "
     "João Vitor Gularte · Letícia Brasil Flores"
 )
-st.caption(
-    "Fonte: [MIMIC-IV Clinical Database Demo v2.2](https://physionet.org/content/mimic-iv-demo/2.2/)"
-)
+
+st.caption("""
+**Dados utilizados**
+
+Johnson, A., Bulgarelli, L., Pollard, T., Horng, S., Celi, L. A., & Mark, R. (2023).
+*MIMIC-IV Clinical Database Demo* (Version 2.2). PhysioNet.
+DOI: https://doi.org/10.13026/dp1f-ex47
+
+Este dashboard utiliza exclusivamente o conjunto de dados **MIMIC-IV Demo**,
+composto por dados clínicos desidentificados de uma amostra de 100 pacientes,
+disponibilizados para fins educacionais e de pesquisa.
+""")
 st.markdown("---")
 
 
@@ -318,3 +327,4 @@ with tab4:
     top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
     network_fig = plot_network(top_pairs_net, "drug1", "drug2", "count", "Rede de Co-prescrição de Medicamentos")
     st.plotly_chart(network_fig, use_container_width=True)
+
