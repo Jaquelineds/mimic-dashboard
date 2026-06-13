@@ -97,6 +97,9 @@ labevents_filtered = labevents[labevents["subject_id"].isin(filtered_subjects)]
 
 prescriptions_filtered = prescriptions[prescriptions["subject_id"].isin(filtered_subjects)]
 
+if patients.empty:
+    st.warning("Nenhum paciente encontrado para os filtros selecionados.")
+    st.stop()
 
 # ── Métricas resumidas no topo ────────────────────────────────────────────────
 col1, col2, col3, col4 = st.columns(4)
@@ -236,7 +239,10 @@ with tab1:
         hovertemplate="%{x} pacientes<extra>Masculino</extra>",
     ))
 
-    max_val = max(fem["count"].max(), male["count"].max()) + 2
+    fem_max = fem["count"].max() if not fem.empty else 0
+    male_max = male["count"].max() if not male.empty else 0
+
+    max_val = int(max(fem_max, male_max)) + 2
     tick_vals = list(range(-max_val, max_val + 1, 2))
 
     fig_pyramid.update_layout(
