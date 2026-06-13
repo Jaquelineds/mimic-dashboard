@@ -3,9 +3,6 @@ venv/
 .venv/
 env/
 
-# Dataset (dados protegidos pelo PhysioNet)
-dataset/
-
 # Streamlit
 .streamlit/secrets.toml
 
