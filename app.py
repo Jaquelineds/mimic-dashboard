@@ -113,6 +113,27 @@ col4.metric("Prescrições", prescriptions_filtered["drug"].nunique())
 def plot_network(df, source_col, target_col, weight_col, title):
     """Constrói e retorna um grafo interativo de coocorrência usando NetworkX + Plotly."""
 
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title=title,
+            height=500,
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            annotations=[
+                dict(
+                    text="Sem conexões suficientes para exibir a rede.",
+                    x=0.5,
+                    y=0.5,
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=14),
+                )
+            ],
+        )
+        return fig
+
     G = nx.Graph()
     for _, row in df.iterrows():
         G.add_edge(row[source_col], row[target_col], weight=row[weight_col])
@@ -175,7 +196,14 @@ def plot_network(df, source_col, target_col, weight_col, title):
 def build_pairs(df, group_col, item_col, max_items_per_group=20):
     """Gera todos os pares de itens que coocorrem dentro do mesmo grupo (ex: internação)."""
     pairs = []
-    for items in df.groupby(group_col)[item_col].apply(lambda x: x.unique()[:max_items_per_group]):
+    grouped_items = (
+        df[[group_col, item_col]]
+        .dropna(subset=[group_col, item_col])
+        .groupby(group_col)[item_col]
+        .apply(lambda x: pd.unique(x)[:max_items_per_group])
+    )
+
+    for items in grouped_items:
         for pair in combinations(sorted(items), 2):
             pairs.append(pair)
     return pairs
@@ -207,6 +235,8 @@ with tab1:
         patients_pyramid[patients_pyramid["gender"] == "F"]
         .groupby("age_group", observed=True)
         .size()
+        .reindex(labels, fill_value=0)
+        .rename_axis("age_group")
         .reset_index(name="count")
     )
     fem["count_neg"] = -fem["count"] # espelha para a esquerda
@@ -215,6 +245,8 @@ with tab1:
         patients_pyramid[patients_pyramid["gender"] == "M"]
         .groupby("age_group", observed=True)
         .size()
+        .reindex(labels, fill_value=0)
+        .rename_axis("age_group")
         .reset_index(name="count")
     )
 
@@ -323,28 +355,35 @@ with tab2:
     admission_counts = admissions_filtered["admission_type"].value_counts().reset_index()
     admission_counts.columns = ["admission_type", "count"]
 
-    fig = px.bar(
-        admission_counts, x="admission_type", y="count",
-        color="count", title="Distribuição dos Tipos de Admissão",
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    if admission_counts.empty:
+        st.info("Sem internações para os filtros selecionados.")
+    else:
+        fig = px.bar(
+            admission_counts, x="admission_type", y="count",
+            color="count", title="Distribuição dos Tipos de Admissão",
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     # Cálculo do tempo de permanência em horas
     admissions_filtered = admissions_filtered.copy()
-    admissions_filtered["admittime"] = pd.to_datetime(admissions_filtered["admittime"])
-    admissions_filtered["dischtime"] = pd.to_datetime(admissions_filtered["dischtime"])
+    admissions_filtered["admittime"] = pd.to_datetime(admissions_filtered["admittime"], errors="coerce")
+    admissions_filtered["dischtime"] = pd.to_datetime(admissions_filtered["dischtime"], errors="coerce")
     admissions_filtered["los_hours"] = (
         admissions_filtered["dischtime"] - admissions_filtered["admittime"]
     ).dt.total_seconds() / 3600
+    admissions_filtered = admissions_filtered[admissions_filtered["los_hours"] >= 0]
 
     los = admissions_filtered.groupby("admission_type")["los_hours"].mean().reset_index()
 
-    fig = px.bar(
-        los.sort_values("los_hours"),
-        x="los_hours", y="admission_type",
-        orientation="h", title="Tempo Médio de Permanência (horas)",
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    if los.empty:
+        st.info("Sem dados válidos para calcular tempo de permanência.")
+    else:
+        fig = px.bar(
+            los.sort_values("los_hours"),
+            x="los_hours", y="admission_type",
+            orientation="h", title="Tempo Médio de Permanência (horas)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 
 # ── Aba 3: Exames ─────────────────────────────────────────────────────────────
@@ -359,39 +398,47 @@ with tab3:
         .head(top_n)
     )
 
-    fig = px.bar(
-        top_labs.sort_values("count"), x="count", y="label",
-        orientation="h", title=f"Top {top_n} Exames Mais Solicitados",
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(top_labs, use_container_width=True)
+    if top_labs.empty:
+        st.info("Sem exames para os filtros selecionados.")
+    else:
+        fig = px.bar(
+            top_labs.sort_values("count"), x="count", y="label",
+            orientation="h", title=f"Top {top_n} Exames Mais Solicitados",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(top_labs, use_container_width=True)
 
     # Pares de exames mais frequentes na mesma internação
     pairs = build_pairs(labevents_filtered, "hadm_id", "itemid")
 
-    df_pairs = pd.DataFrame(pairs, columns=["lab1", "lab2"])
-    top_pairs = df_pairs.value_counts().reset_index(name="count").head(top_n)
+    if not pairs:
+        st.info("Sem combinações de exames suficientes para os filtros selecionados.")
+    else:
+        df_pairs = pd.DataFrame(pairs, columns=["lab1", "lab2"])
+        top_pairs = df_pairs.value_counts().reset_index(name="count").head(top_n)
 
-    top_pairs = (
-        top_pairs
-        .merge(d_labitems[["itemid", "label"]], left_on="lab1", right_on="itemid", how="left")
-        .rename(columns={"label": "exam1"})
-        .merge(d_labitems[["itemid", "label"]], left_on="lab2", right_on="itemid", how="left")
-        .rename(columns={"label": "exam2"})
-    )
-    top_pairs["pair"] = top_pairs["exam1"] + " & " + top_pairs["exam2"]
+        top_pairs = (
+            top_pairs
+            .merge(d_labitems[["itemid", "label"]], left_on="lab1", right_on="itemid", how="left")
+            .rename(columns={"label": "exam1"})
+            .merge(d_labitems[["itemid", "label"]], left_on="lab2", right_on="itemid", how="left")
+            .rename(columns={"label": "exam2"})
+        )
+        top_pairs["exam1"] = top_pairs["exam1"].fillna(top_pairs["lab1"].astype(str))
+        top_pairs["exam2"] = top_pairs["exam2"].fillna(top_pairs["lab2"].astype(str))
+        top_pairs["pair"] = top_pairs["exam1"] + " & " + top_pairs["exam2"]
 
-    fig = px.bar(
-        top_pairs.sort_values("count"), x="count", y="pair",
-        orientation="h", title=f"Top {top_n} Combinações de Exames",
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(top_pairs[["exam1", "exam2", "count"]], use_container_width=True)
+        fig = px.bar(
+            top_pairs.sort_values("count"), x="count", y="pair",
+            orientation="h", title=f"Top {top_n} Combinações de Exames",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(top_pairs[["exam1", "exam2", "count"]], use_container_width=True)
 
-    # Rede de coocorrência de exames filtrada por frequência mínima
-    top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
-    network_fig = plot_network(top_pairs_net, "exam1", "exam2", "count", "Rede de Coocorrência de Exames")
-    st.plotly_chart(network_fig, use_container_width=True)
+        # Rede de coocorrência de exames filtrada por frequência mínima
+        top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
+        network_fig = plot_network(top_pairs_net, "exam1", "exam2", "count", "Rede de Coocorrência de Exames")
+        st.plotly_chart(network_fig, use_container_width=True)
 
 
 # ── Aba 4: Medicamentos ───────────────────────────────────────────────────────
@@ -400,37 +447,40 @@ with tab4:
     med_counts = prescriptions_filtered["drug"].value_counts().reset_index()
     med_counts.columns = ["drug", "count"]
 
-    fig = px.bar(
-        med_counts.head(top_n).sort_values("count"), x="count", y="drug",
-        orientation="h", title=f"Top {top_n} Medicamentos Prescritos",
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    if med_counts.empty:
+        st.info("Sem medicamentos para os filtros selecionados.")
+    else:
+        fig = px.bar(
+            med_counts.head(top_n).sort_values("count"), x="count", y="drug",
+            orientation="h", title=f"Top {top_n} Medicamentos Prescritos",
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     # Normalização dos nomes de medicamentos antes de gerar pares
-    prescriptions_filtered = prescriptions_filtered.copy()
-    prescriptions_filtered["drug_cleaned"] = (
-        prescriptions_filtered["drug"].str.strip().str.lower()
+    prescriptions_pairs = prescriptions_filtered.copy()
+    prescriptions_pairs["drug_cleaned"] = (
+        prescriptions_pairs["drug"].fillna("").str.strip().str.lower()
     )
+    prescriptions_pairs = prescriptions_pairs[prescriptions_pairs["drug_cleaned"] != ""]
 
-    pairs = build_pairs(prescriptions_filtered, "hadm_id", "drug_cleaned")
+    pairs = build_pairs(prescriptions_pairs, "hadm_id", "drug_cleaned")
 
     if not pairs:
-        st.warning("Não há dados suficientes para gerar combinações.")
-        st.stop()
+        st.info("Não há dados suficientes para gerar combinações de medicamentos.")
+    else:
+        df_pairs = pd.DataFrame(pairs, columns=["drug1", "drug2"])
+        top_pairs = df_pairs.value_counts().reset_index(name="count").head(top_n)
+        top_pairs["pair"] = top_pairs["drug1"] + " & " + top_pairs["drug2"]
 
-    df_pairs = pd.DataFrame(pairs, columns=["drug1", "drug2"])
-    top_pairs = df_pairs.value_counts().reset_index(name="count").head(top_n)
-    top_pairs["pair"] = top_pairs["drug1"] + " & " + top_pairs["drug2"]
+        fig = px.bar(
+            top_pairs.sort_values("count"), x="count", y="pair",
+            orientation="h", title=f"Top {top_n} Combinações de Medicamentos",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(top_pairs, use_container_width=True)
 
-    fig = px.bar(
-        top_pairs.sort_values("count"), x="count", y="pair",
-        orientation="h", title=f"Top {top_n} Combinações de Medicamentos",
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(top_pairs, use_container_width=True)
-
-    # Rede de co-prescrição filtrada por frequência mínima
-    top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
-    network_fig = plot_network(top_pairs_net, "drug1", "drug2", "count", "Rede de Co-prescrição de Medicamentos")
-    st.plotly_chart(network_fig, use_container_width=True)
+        # Rede de co-prescrição filtrada por frequência mínima
+        top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
+        network_fig = plot_network(top_pairs_net, "drug1", "drug2", "count", "Rede de Co-prescrição de Medicamentos")
+        st.plotly_chart(network_fig, use_container_width=True)
 
