@@ -64,13 +64,18 @@ def render(patients):
     tick_vals = list(range(-max_val, max_val + 1, 2))
 
     fig_pyramid.update_layout(
-        title="Pirâmide Etária por Gênero",
+        title=dict(
+            text="Pirâmide Etária por Gênero",
+            x=0.5,
+            xanchor="center",
+            xref="paper",
+        ),
         barmode="relative",
         bargap=0.15,
         xaxis=dict(
             tickvals=tick_vals,
             ticktext=[str(abs(v)) for v in tick_vals],
-            title="Nº de pacientes",
+            title_text="Nº de pacientes",
             zeroline=True,
             zerolinewidth=1,
         ),
@@ -102,7 +107,7 @@ def render(patients):
             },
         )
 
-        fig.update_layout(showlegend=False)
+        fig.update_layout(showlegend=False, title_x=0.5, title_xanchor="center", title_xref="paper")
 
         st.plotly_chart(fig, use_container_width=True)
 
@@ -122,6 +127,8 @@ def render(patients):
 
         fig_donut.update_layout(
             title="Proporção por Gênero",
+            title_x=0.5,
+            title_xanchor="center",
             showlegend=False,
             height=400,
             annotations=[dict(

@@ -18,6 +18,12 @@ def render(prescriptions_filtered, top_n, min_freq):
         fig = px.bar(
             med_counts.head(top_n).sort_values("count"), x="count", y="drug",
             orientation="h", title=f"Top {top_n} Medicamentos Prescritos",
+            labels={"drug": "Medicamento", "count": "Número de Prescrições"},
+        )
+        fig.update_layout(
+            title_x=0.5,
+            title_xanchor="center",
+            title_xref="paper",
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -40,9 +46,22 @@ def render(prescriptions_filtered, top_n, min_freq):
         fig = px.bar(
             top_pairs.sort_values("count"), x="count", y="pair",
             orientation="h", title=f"Top {top_n} Combinações de Medicamentos",
+            labels={"pair": "Combinação de Medicamentos", "count": "Número de Internações"},
+        )
+        fig.update_layout(
+            title_x=0.5,
+            title_xanchor="center",
+            title_xref="paper",
         )
         st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(top_pairs, use_container_width=True)
+        st.dataframe(top_pairs, use_container_width=True, 
+                     column_config={
+                         "drug1": st.column_config.TextColumn(label="Medicamento 1", alignment="left"),
+                         "drug2": st.column_config.TextColumn(label="Medicamento 2", alignment="left"), 
+                         "count": st.column_config.NumberColumn(label="Número de Internações", alignment="left"),
+                         "pair": st.column_config.TextColumn(label="Combinação", alignment="left"),
+                    }
+        )
 
         # Rede de co-prescrição filtrada por frequência mínima
         top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
