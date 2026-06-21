@@ -15,7 +15,15 @@ def render(admissions_filtered):
         fig = px.bar(
             admission_counts, x="admission_type", y="count",
             color="count", title="Distribuição dos Tipos de Admissão",
+            labels={"admission_type": "Tipo de Admissão", "count": "Número de Internações"},
         )
+        
+        fig.update_layout(
+            title_x=0.5,
+            title_xanchor="center",
+            title_xref="paper",
+        )
+
         st.plotly_chart(fig, use_container_width=True)
 
     # Cálculo do tempo de permanência em horas
@@ -36,5 +44,13 @@ def render(admissions_filtered):
             los.sort_values("los_hours"),
             x="los_hours", y="admission_type",
             orientation="h", title="Tempo Médio de Permanência (horas)",
+            labels={"admission_type": "Tipo de Admissão", "los_hours": "Tempo Médio (horas)"},
         )
+
+        fig.update_layout(
+            title_x=0.5,
+            title_xanchor="center",
+            title_xref="paper",
+        )
+
         st.plotly_chart(fig, use_container_width=True)

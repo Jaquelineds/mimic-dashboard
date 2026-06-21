@@ -24,9 +24,22 @@ def render(labevents_filtered, d_labitems, top_n, min_freq):
         fig = px.bar(
             top_labs.sort_values("count"), x="count", y="label",
             orientation="h", title=f"Top {top_n} Exames Mais Solicitados",
+            labels={"label": "Exame", "count": "Número de Solicitações"},
+        )
+        fig.update_layout(
+            title_x=0.5,
+            title_xanchor="center",
+            title_xref="paper",
         )
         st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(top_labs, use_container_width=True)
+        st.dataframe(top_labs, 
+                     column_config={
+                         "itemid": st.column_config.TextColumn(label="ID do Exame", alignment="left"),
+                         "count": st.column_config.NumberColumn(label="Número de Solicitações", alignment="left"), 
+                         "label": st.column_config.TextColumn(label="Exame", alignment="left"), 
+                    }, 
+                     use_container_width=True
+        )
 
     # Pares de exames mais frequentes na mesma internação
     pairs = build_pairs(labevents_filtered, "hadm_id", "itemid")
@@ -51,9 +64,21 @@ def render(labevents_filtered, d_labitems, top_n, min_freq):
         fig = px.bar(
             top_pairs.sort_values("count"), x="count", y="pair",
             orientation="h", title=f"Top {top_n} Combinações de Exames",
+            labels={"pair": "Combinação de Exames", "count": "Número de Internações"},
+        )
+        fig.update_layout(
+            title_x=0.5,
+            title_xanchor="center",
+            title_xref="paper",
         )
         st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(top_pairs[["exam1", "exam2", "count"]], use_container_width=True)
+        st.dataframe(top_pairs[["exam1", "exam2", "count"]], use_container_width=True, 
+                     column_config={
+                         "exam1": st.column_config.TextColumn(label="Exame 1", alignment="left"),
+                         "exam2": st.column_config.TextColumn(label="Exame 2", alignment="left"), 
+                         "count": st.column_config.NumberColumn(label="Número de Internações", alignment="left"), 
+                    }
+        )
 
         # Rede de coocorrência de exames filtrada por frequência mínima
         top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
