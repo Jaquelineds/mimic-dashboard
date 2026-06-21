@@ -34,7 +34,8 @@ def render(prescriptions_filtered, top_n, min_freq):
         st.info("Não há dados suficientes para gerar combinações de medicamentos.")
     else:
         df_pairs = pd.DataFrame(pairs, columns=["drug1", "drug2"])
-        top_pairs = df_pairs.value_counts().reset_index(name="count").head(top_n)
+        all_pair_counts = df_pairs.value_counts().reset_index(name="count")
+        top_pairs = all_pair_counts.head(top_n)
         top_pairs["pair"] = top_pairs["drug1"] + " & " + top_pairs["drug2"]
 
         fig = px.bar(
@@ -45,6 +46,6 @@ def render(prescriptions_filtered, top_n, min_freq):
         st.dataframe(top_pairs, use_container_width=True)
 
         # Rede de co-prescrição filtrada por frequência mínima
-        top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
+        top_pairs_net = all_pair_counts[all_pair_counts["count"] >= min_freq]
         network_fig = plot_network(top_pairs_net, "drug1", "drug2", "count", "Rede de Co-prescrição de Medicamentos")
         st.plotly_chart(network_fig, use_container_width=True)

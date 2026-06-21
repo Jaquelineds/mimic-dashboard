@@ -35,18 +35,20 @@ def render(labevents_filtered, d_labitems, top_n, min_freq):
         st.info("Sem combinações de exames suficientes para os filtros selecionados.")
     else:
         df_pairs = pd.DataFrame(pairs, columns=["lab1", "lab2"])
-        top_pairs = df_pairs.value_counts().reset_index(name="count").head(top_n)
+        all_pair_counts = df_pairs.value_counts().reset_index(name="count")
 
-        top_pairs = (
-            top_pairs
+        all_pair_counts = (
+            all_pair_counts
             .merge(d_labitems[["itemid", "label"]], left_on="lab1", right_on="itemid", how="left")
             .rename(columns={"label": "exam1"})
             .merge(d_labitems[["itemid", "label"]], left_on="lab2", right_on="itemid", how="left")
             .rename(columns={"label": "exam2"})
         )
-        top_pairs["exam1"] = top_pairs["exam1"].fillna(top_pairs["lab1"].astype(str))
-        top_pairs["exam2"] = top_pairs["exam2"].fillna(top_pairs["lab2"].astype(str))
-        top_pairs["pair"] = top_pairs["exam1"] + " & " + top_pairs["exam2"]
+        all_pair_counts["exam1"] = all_pair_counts["exam1"].fillna(all_pair_counts["lab1"].astype(str))
+        all_pair_counts["exam2"] = all_pair_counts["exam2"].fillna(all_pair_counts["lab2"].astype(str))
+        all_pair_counts["pair"] = all_pair_counts["exam1"] + " & " + all_pair_counts["exam2"]
+
+        top_pairs = all_pair_counts.head(top_n)
 
         fig = px.bar(
             top_pairs.sort_values("count"), x="count", y="pair",
@@ -56,6 +58,6 @@ def render(labevents_filtered, d_labitems, top_n, min_freq):
         st.dataframe(top_pairs[["exam1", "exam2", "count"]], use_container_width=True)
 
         # Rede de coocorrência de exames filtrada por frequência mínima
-        top_pairs_net = top_pairs[top_pairs["count"] >= min_freq]
+        top_pairs_net = all_pair_counts[all_pair_counts["count"] >= min_freq]
         network_fig = plot_network(top_pairs_net, "exam1", "exam2", "count", "Rede de Coocorrência de Exames")
         st.plotly_chart(network_fig, use_container_width=True)
