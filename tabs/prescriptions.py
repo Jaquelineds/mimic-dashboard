@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from chord_utils import plot_chord
 from network_utils import build_pairs, plot_network
 
 
@@ -64,7 +65,11 @@ def render(prescriptions_filtered, top_n, min_freq):
                     }
         )
 
-        # Rede de co-prescrição filtrada por frequência mínima
+        # Diagrama de cordas de co-prescrição filtrada por frequência mínima
         top_pairs_net = all_pair_counts[all_pair_counts["count"] >= min_freq]
-        network_fig = plot_network(top_pairs_net, "drug1", "drug2", "count", "Rede de Co-prescrição de Medicamentos")
-        st.plotly_chart(network_fig, use_container_width=True)
+
+        chord_html = plot_chord(top_pairs_net, "drug1", "drug2", "count", "Diagrama de Cordas de Co-prescrição de Medicamentos")
+        if chord_html is None:
+            st.info("Sem conexões suficientes para exibir o diagrama de cordas.")
+        else:
+            st.components.v1.html(chord_html, height=720, scrolling=False)
