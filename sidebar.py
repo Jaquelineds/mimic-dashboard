@@ -26,7 +26,7 @@ def render_sidebar(patients, admissions):
 
     top_n = st.sidebar.slider("Top N resultados", 5, 20, 10)
 
-    min_freq = st.sidebar.slider("Frequência mínima das conexões", 1, 20, 2)
+    min_freq = st.sidebar.slider("Frequência mínima das conexões", 20, 100, 40)
 
     st.sidebar.markdown("---")
 
