@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from chord_utils import plot_chord
 from network_utils import build_pairs, plot_network
 
 
@@ -82,7 +83,11 @@ def render(labevents_filtered, d_labitems, top_n, min_freq):
                     }
         )
 
-        # Rede de coocorrência de exames filtrada por frequência mínima
+        # Diagrama de cordas de coocorrência de exames filtrada por frequência mínima
         top_pairs_net = all_pair_counts[all_pair_counts["count"] >= min_freq]
-        network_fig = plot_network(top_pairs_net, "exam1", "exam2", "count", "Rede de Coocorrência de Exames")
-        st.plotly_chart(network_fig, use_container_width=True)
+
+        chord_html = plot_chord(top_pairs_net, "exam1", "exam2", "count", "Diagrama de Cordas de Coocorrência de Exames")
+        if chord_html is None:
+            st.info("Sem conexões suficientes para exibir o diagrama de cordas.")
+        else:
+            st.components.v1.html(chord_html, height=720, scrolling=False)
