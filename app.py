@@ -66,10 +66,36 @@ if patients.empty:
 
 # ── Métricas resumidas no topo ────────────────────────────────────────────────
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Pacientes", len(patients))
-col2.metric("Internações", len(admissions_filtered))
-col3.metric("Exames", labevents_filtered["itemid"].nunique())
-col4.metric("Prescrições", prescriptions_filtered["drug"].nunique())
+
+col1.metric(
+    "Pacientes",
+    len(patients)
+)
+
+col2.metric(
+    "Internações",
+    len(admissions_filtered)
+)
+
+col3.metric(
+    "Tipos de exames",
+    labevents_filtered["itemid"].nunique()
+)
+
+col4.metric(
+    "Medicamentos",
+    prescriptions_filtered["drug"].nunique()
+)
+
+# Resumo complementar
+total_exames = f"{len(labevents_filtered):,}".replace(",", ".")
+total_prescricoes = f"{len(prescriptions_filtered):,}".replace(",", ".")
+
+st.caption(
+    f"**Registros analisados:** "
+    f"{total_exames} exames laboratoriais e "
+    f"{total_prescricoes} prescrições."
+)
 
 
 # ── Abas principais ───────────────────────────────────────────────────────────
